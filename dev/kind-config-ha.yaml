@@ -9,11 +9,27 @@ networking:
   serviceSubnet: "10.96.0.0/16"
 nodes:
   - role: control-plane
+    # Prevent SNR from rebooting the shared host kernel; the watcher restarts containers.
+    extraMounts: &rebootMasks
+      - hostPath: /dev/null
+        containerPath: /proc/sysrq-trigger
+        readOnly: true
+      - hostPath: /dev/null
+        containerPath: /dev/watchdog
+        readOnly: true
+      - hostPath: /dev/null
+        containerPath: /dev/watchdog0
+        readOnly: true
   - role: control-plane
+    extraMounts: *rebootMasks
   - role: control-plane
+    extraMounts: *rebootMasks
   - role: worker
+    extraMounts: *rebootMasks
   - role: worker
+    extraMounts: *rebootMasks
   - role: worker
+    extraMounts: *rebootMasks
 containerdConfigPatches:
   - |-
     [plugins."io.containerd.grpc.v1.cri".registry]

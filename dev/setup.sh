@@ -363,18 +363,7 @@ EOF"
         echo "  All worker nodes already labeled."
     fi
 
-    echo "=== Loading softdog kernel module on worker nodes (for SNR/SBR watchdog) ==="
-    NODES=$(kind get nodes --name "${CLUSTER_NAME}" 2>/dev/null)
-    if [ -z "${NODES}" ]; then
-        NODES=$(${KUBECTL} get nodes --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null)
-    fi
-    for node in ${NODES}; do
-        if echo "$node" | grep -q 'worker'; then
-            ${CONTAINER_TOOL} exec "$node" modprobe softdog 2>/dev/null && \
-                echo "  softdog loaded on $node" || \
-                echo "  Warning: could not load softdog on $node (SNR/SBR watchdog reboot testing will be limited)"
-        fi
-    done
+
 fi
 
 echo "=== Ensuring namespace '${DEV_NS}' ==="

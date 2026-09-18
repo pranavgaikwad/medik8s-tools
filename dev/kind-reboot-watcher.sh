@@ -2,8 +2,8 @@
 # kind-reboot-watcher.sh — Simulates node reboot on Kind clusters
 #
 # On real hardware, SNR triggers a reboot (sysrq-trigger or watchdog), which
-# restarts the machine and kubelet comes back up. On Kind, the sysrq-trigger
-# doesn't work because Kind nodes are containers sharing the host kernel.
+# restarts the machine and kubelet comes back up. Kind nodes share the host
+# kernel, so the Kind configs mask SysRq and watchdog paths to block real reboots.
 #
 # This script watches worker nodes and when one becomes NotReady (kubelet
 # stopped), it waits a configurable delay then restarts the Kind container,
@@ -53,7 +53,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Track nodes that are currently being "rebooted" to avoid double-restart
-declare -A REBOOTING
+REBOOTING=" "
 
 echo "[reboot-watcher] Watching Kind cluster '${CLUSTER_NAME}' (delay: ${REBOOT_DELAY}s)"
 echo "[reboot-watcher] Container tool: ${CONTAINER_TOOL}"
@@ -93,11 +93,11 @@ while true; do
 
     for node in $WORKERS; do
         # Skip nodes already being rebooted
-        if [[ -n "${REBOOTING[$node]:-}" ]]; then
+        if [[ "$REBOOTING" == *" $node "* ]]; then
             # Check if reboot completed (kubelet running again)
             if is_kubelet_running "$node"; then
                 echo "[reboot-watcher] $node: kubelet is back, reboot complete."
-                unset "REBOOTING[$node]"
+                REBOOTING="${REBOOTING/ $node / }"
             fi
             continue
         fi
@@ -106,7 +106,7 @@ while true; do
         if is_node_not_ready "$node" && ! is_kubelet_running "$node"; then
             echo "[reboot-watcher] $node: kubelet stopped, NotReady detected."
             echo "[reboot-watcher] $node: waiting ${REBOOT_DELAY}s before simulated reboot..."
-            REBOOTING[$node]=1
+            REBOOTING+="$node "
 
             # Restart in background so we keep watching other nodes
             (

@@ -448,10 +448,16 @@ dev-create-nhc: ## Create a NodeHealthCheck CR that triggers SNR remediation
 
 .PHONY: dev-reboot-watcher
 dev-reboot-watcher: ## Start background watcher that simulates node reboot on Kind (restarts container when kubelet stops)
-	@$(DEV_DIR)/kind-reboot-watcher.sh &
-	@echo "Reboot watcher started in background (PID $$!)."
-	@echo "  It will restart Kind node containers when kubelet stops."
-	@echo "  Use 'kill $$!' or 'make dev-reboot-watcher-stop' to stop."
+	@"$(DEV_DIR)/kind-reboot-watcher.sh" & \
+	pid=$$!; \
+	sleep 1; \
+	if ! kill -0 "$$pid" 2>/dev/null; then \
+		echo "Error: reboot watcher exited during startup." >&2; \
+		wait "$$pid"; exit 1; \
+	fi; \
+	echo "Reboot watcher started in background (PID $$pid)."; \
+	echo "  It will restart Kind node containers when kubelet stops."; \
+	echo "  Use 'kill $$pid' or 'make dev-reboot-watcher-stop' to stop."
 
 .PHONY: dev-reboot-watcher-stop
 dev-reboot-watcher-stop: ## Stop the background Kind reboot watcher
